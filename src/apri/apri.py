@@ -9,7 +9,7 @@ Some use cases follow.
 
 
 import sys
-from os.path import join, isfile, dirname, realpath
+import os
 from zipfile import ZipFile
 import logging
 
@@ -30,7 +30,7 @@ def apri(filename, *args, **kwargs):
             loader = module.__loader__
             name = module.__name__
 
-            filelike = StringIO(loader.get_data(join(name, filename)))
+            filelike = StringIO(loader.get_data(os.path.join(name, filename)))
             log.debug(u'Loading from module loader '
                        '{0}/{1}'.format(name, filename))
             return filelike
@@ -40,21 +40,39 @@ def apri(filename, *args, **kwargs):
 
     else:
         base = __file__
-        if not isfile(base):
-            zipreader = ZipFile(dirname(base))
+        if not os.path.isfile(base):
+            zipreader = ZipFile(os.path.dirname(base))
             filelike = StringIO(zipreader.read(filename))
 
             log.debug(u'Loading from zipfile '
-                       '{0}/{1}'.format(dirname(base), filename))
+                       '{0}/{1}'.format(os.path.dirname(base), filename))
 
             return filelike
 
-    basedir = realpath(dirname(base))
+    basedir = os.path.realpath(os.path.dirname(base))
 
-    filelike = open(join(basedir, filename), *args, **kwargs)
+    filelike = open(os.path.join(basedir, filename), *args, **kwargs)
     log.debug(u'Loading from filesystem '
                 '{0}/{1}'.format(basedir, filename))
+
     return filelike
+
+
+def stat(filename, module=None):
+    if module:
+        try:
+            loader = module.__loader__
+            return os.stat(loader.archive)
+        except AttributeError:
+            base = module.__file__
+
+    else:
+        base = __file__
+        if not os.path.isfile(base):
+            return os.stat(os.path.dirname(base))
+
+    basedir = os.path.realpath(os.path.dirname(base))
+    return os.stat(os.path.join(basedir, filename))
 
 
 if __name__ == '__main__':
@@ -72,5 +90,6 @@ if __name__ == '__main__':
     except IndexError:
         module = None
 
+    print stat(what, module=module)
     print apri(what, module=module).read()
 
